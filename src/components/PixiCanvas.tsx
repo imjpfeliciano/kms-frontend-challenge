@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import { forwardRef, memo, useEffect, useRef, useState } from "react";
+import { useRects } from "../context/RectsContext";
 import { useRenderLog } from "../hooks/useRenderLog";
 import { Rect } from "../types";
 
@@ -8,18 +9,6 @@ const GRID_SIZE = 20;
 function snapToGrid(value: number): number {
   const snapped = Math.round(value / GRID_SIZE) * GRID_SIZE;
   return snapped;
-}
-
-interface Props {
-  rects: Rect[];
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  onMoveRect: (
-    id: string,
-    x: number,
-    y: number,
-    prev?: { x: number; y: number },
-  ) => void;
 }
 
 type DragState = {
@@ -41,34 +30,37 @@ function focusCanvasContainer(
   containerRef.current?.focus();
 }
 
-const PixiCanvasInner = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
-  { rects, selectedId, onSelect, onMoveRect },
-  ref,
-) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const setRef = (el: HTMLDivElement | null) => {
-    (containerRef as React.MutableRefObject<HTMLDivElement | null>).current =
-      el;
-    if (typeof ref === "function") ref(el);
-    else if (ref)
-      (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
-  };
-  const appRef = useRef<PIXI.Application | null>(null);
-  const [pixiReady, setPixiReady] = useState(false);
-  const graphicsRef = useRef<Map<string, PIXI.Graphics>>(new Map());
-  const dragRef = useRef<DragState | null>(null);
-  const onMoveRectRef = useRef(onMoveRect);
-  const onSelectRef = useRef(onSelect);
-  const prevRectsRef = useRef<Rect[] | null>(null);
-  const prevSelectedIdRef = useRef<string | null>(null);
-  onMoveRectRef.current = onMoveRect;
-  onSelectRef.current = onSelect;
+interface PixiCanvasProps {
+  ref?: React.Ref<HTMLDivElement>;
+}
 
-  useRenderLog("PixiCanvas", {
-    rectsLen: rects.length,
-    selectedId,
-    pixiReady,
-  });
+const PixiCanvasInner = forwardRef<HTMLDivElement, PixiCanvasProps>(
+  function PixiCanvas(_, ref) {
+    const { rects, selectedId, setSelectedId, onMoveRect } = useRects();
+    const containerRef = useRef<HTMLDivElement>(null);
+    const setRef = (el: HTMLDivElement | null) => {
+      (containerRef as React.MutableRefObject<HTMLDivElement | null>).current =
+        el;
+      if (typeof ref === "function") ref(el);
+      else if (ref)
+        (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    };
+    const appRef = useRef<PIXI.Application | null>(null);
+    const [pixiReady, setPixiReady] = useState(false);
+    const graphicsRef = useRef<Map<string, PIXI.Graphics>>(new Map());
+    const dragRef = useRef<DragState | null>(null);
+    const onMoveRectRef = useRef(onMoveRect);
+    const onSelectRef = useRef(setSelectedId);
+    const prevRectsRef = useRef<Rect[] | null>(null);
+    const prevSelectedIdRef = useRef<string | null>(null);
+    onMoveRectRef.current = onMoveRect;
+    onSelectRef.current = setSelectedId;
+
+    useRenderLog("PixiCanvas", {
+      rectsLen: rects.length,
+      selectedId,
+      pixiReady,
+    });
 
   useEffect(() => {
     const container = containerRef.current!;
@@ -223,7 +215,7 @@ const PixiCanvasInner = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
 
     prevRectsRef.current = rects;
     prevSelectedIdRef.current = selectedId;
-  }, [rects, selectedId, onSelect, pixiReady]);
+  }, [rects, selectedId, setSelectedId, pixiReady]);
 
   return (
     <div

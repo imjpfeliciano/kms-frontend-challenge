@@ -1,4 +1,5 @@
-import { memo, useRef, useEffect } from "react";
+import { memo, useEffect, useRef } from "react";
+import { useRects } from "../context/RectsContext";
 import { useRenderLog } from "../hooks/useRenderLog";
 import { Rect, type RectSnapshot } from "../types";
 
@@ -19,21 +20,15 @@ function snapToGrid(value: number): number {
   return Math.round(value / GRID_SIZE) * GRID_SIZE;
 }
 
-interface Props {
-  rect: Rect | null;
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
-  onUpdateRect: (
-    id: string,
-    updates: Partial<Pick<Rect, "x" | "y" | "width" | "height" | "fill">>
-  ) => void;
-  onCommitEdit: (id: string, snapshotBeforeEdit: RectSnapshot) => void;
-}
-
 function toSnapshot(r: Rect): RectSnapshot {
-  return { id: r.id, x: r.x, y: r.y, width: r.width, height: r.height, fill: r.fill };
+  return {
+    id: r.id,
+    x: r.x,
+    y: r.y,
+    width: r.width,
+    height: r.height,
+    fill: r.fill,
+  };
 }
 
 function snapshotEqualsRect(snap: RectSnapshot, r: Rect): boolean {
@@ -100,16 +95,19 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-function PanelInner({
-  rect,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
-  onUpdateRect,
-  onCommitEdit,
-}: Props) {
-  const editStartRef = useRef<{ id: string; snapshot: RectSnapshot } | null>(null);
+function PanelInner() {
+  const {
+    selectedRect: rect,
+    canUndo,
+    canRedo,
+    onUndo,
+    onRedo,
+    onUpdateRect,
+    onCommitEdit,
+  } = useRects();
+  const editStartRef = useRef<{ id: string; snapshot: RectSnapshot } | null>(
+    null,
+  );
 
   useRenderLog("Panel", {
     rectId: rect?.id ?? null,
@@ -133,7 +131,11 @@ function PanelInner({
   };
 
   const handleBlur = () => {
-    if (editStartRef.current && rect && !snapshotEqualsRect(editStartRef.current.snapshot, rect)) {
+    if (
+      editStartRef.current &&
+      rect &&
+      !snapshotEqualsRect(editStartRef.current.snapshot, rect)
+    ) {
       onCommitEdit(rect.id, editStartRef.current.snapshot);
     }
     editStartRef.current = null;
@@ -288,7 +290,12 @@ function PanelInner({
             <input
               id="panel-fill"
               type="color"
-              style={{ ...inputStyle, padding: 2, height: 32, cursor: "pointer" }}
+              style={{
+                ...inputStyle,
+                padding: 2,
+                height: 32,
+                cursor: "pointer",
+              }}
               value={fillToHexString(rect.fill)}
               onFocus={handleFocus}
               onBlur={handleBlur}
