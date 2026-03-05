@@ -2,13 +2,13 @@ For a step-by-step overview of how this challenge was tackled (tasks, order of w
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `yarn dev` | Start the development server |
-| `yarn build` | Typecheck and build for production |
-| `yarn preview` | Preview the production build |
-| `yarn test` | Run tests in watch mode |
-| `yarn test:run` | Run tests once (e.g. for CI) |
+| Command              | Description                                                         |
+| -------------------- | ------------------------------------------------------------------- |
+| `yarn dev`           | Start the development server                                        |
+| `yarn build`         | Typecheck and build for production                                  |
+| `yarn preview`       | Preview the production build                                        |
+| `yarn test`          | Run tests in watch mode                                             |
+| `yarn test:run`      | Run tests once (e.g. for CI)                                        |
 | `yarn test:coverage` | Run tests and generate coverage report (text + HTML in `coverage/`) |
 
 ## Testing
@@ -89,7 +89,7 @@ sequenceDiagram
 ## Undo/Redo Strategy
 
 - **Model:** A history entry is a full rect snapshot (`RectSnapshot`: `id`, `x`, `y`, `width`, `height`, `fill`). The undo stack holds “previous states to restore”; redo holds “states we undid so we can re-apply.”
-- **Push:** When the user moves a rect (drag end), we push the rect’s state *before* the move. When they edit in the panel, we push the rect’s state *before* the edit session on first focus; we commit that single snapshot on blur via `onCommitEdit` (so one undo per edit session, not per keystroke).
+- **Push:** When the user moves a rect (drag end), we push the rect’s state _before_ the move. When they edit in the panel, we push the rect’s state _before_ the edit session on first focus; we commit that single snapshot on blur via `onCommitEdit` (so one undo per edit session, not per keystroke).
 - **Undo:** Pop from undo stack, apply that snapshot to the matching rect, push the current rect state onto the redo stack.
 - **Redo:** Pop from redo stack, apply to the rect, push current state onto the undo stack.
 - **Shortcuts:** Handled by `useUndoRedoShortcuts` when the canvas container has focus. We prevent default for the relevant key combos so the browser doesn’t run its own undo/history even when there’s nothing to undo/redo.
@@ -105,4 +105,9 @@ sequenceDiagram
 
 ## If you had more time, what you'd improve or finish
 
-*(Leave as-is or fill in later.)*
+Here are some ideas you could tack on when you have a spare hour or two:
+
+- **Add/delete rects** — Right now it’s probably just the initial set; a “New rect” button and a way to delete the selected rect (e.g. Delete/Backspace key) would make it feel more like a real editor.
+- **Accessibility** — Keyboard-friendly selection (Tab through rects, arrow keys to nudge), focus management, and some ARIA so screen readers can understand the canvas and panel.
+- **Error boundary** — Wrap the app (or at least the canvas) in an error boundary so one bad rect or PIXI hiccup doesn’t take down the whole page.
+- **Small UX tweaks** — Tooltips on Undo/Redo, a “Reset” to initial layout, or a minimap if the canvas gets big.
