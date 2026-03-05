@@ -1,3 +1,5 @@
+For a step-by-step overview of how this challenge was tackled (tasks, order of work, and bonus items), see [tasks.md](./tasks.md).
+
 ## Architecture
 
 The app is structured around a single **RectsContext** that holds all rect and undo/redo state. The root `App` wraps the tree in `RectsProvider`; `AppContent` renders the canvas and panel and wires keyboard shortcuts. **PixiCanvas** and **Panel** read from context via `useRects()` and no longer receive rect/undo props (no prop drilling).
