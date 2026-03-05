@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Panel } from "./components/Panel";
 import { PixiCanvas } from "./components/PixiCanvas";
+import { useRenderLog } from "./hooks/useRenderLog";
 import { useUndoRedoShortcuts } from "./hooks/useUndoRedoShortcuts";
 import { generateRects } from "./seed";
 import { Rect, RectSnapshot } from "./types";
@@ -32,45 +33,60 @@ export function App() {
   const [redoStack, setRedoStack] = useState<RectSnapshot[]>([]);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
-  const selectedRect = rects.find((r) => r.id === selectedId) ?? null;
+  const selectedRect = useMemo(
+    () => rects.find((r) => r.id === selectedId) ?? null,
+    [rects, selectedId]
+  );
 
-  const handleMoveRect = (
-    id: string,
-    x: number,
-    y: number,
-    prev?: { x: number; y: number }
-  ) => {
-    setRects((prevRects) => {
-      const r = prevRects.find((rect) => rect.id === id);
-      if (prev != null && r) {
-        setUndoStack((s) => [...s, toSnapshot(r)]);
-        setRedoStack([]);
-      }
-      return prevRects.map((r) => (r.id === id ? { ...r, x, y } : r));
-    });
-  };
+  useRenderLog("App", {
+    rectsLen: rects.length,
+    selectedId,
+    undoLen: undoStack.length,
+    redoLen: redoStack.length,
+  });
 
-  const handleUpdateRect = (
-    id: string,
-    updates: Partial<Pick<Rect, "x" | "y" | "width" | "height" | "fill">>
-  ) => {
-    setRects((prevRects) =>
-      prevRects.map((r) => (r.id === id ? { ...r, ...updates } : r))
-    );
-  };
+  const handleMoveRect = useCallback(
+    (id: string, x: number, y: number, prev?: { x: number; y: number }) => {
+      setRects((prevRects) => {
+        const r = prevRects.find((rect) => rect.id === id);
+        if (prev != null && r) {
+          setUndoStack((s) => [...s, toSnapshot(r)]);
+          setRedoStack([]);
+        }
+        return prevRects.map((r) => (r.id === id ? { ...r, x, y } : r));
+      });
+    },
+    []
+  );
+
+  const handleUpdateRect = useCallback(
+    (
+      id: string,
+      updates: Partial<Pick<Rect, "x" | "y" | "width" | "height" | "fill">>
+    ) => {
+      setRects((prevRects) =>
+        prevRects.map((r) => (r.id === id ? { ...r, ...updates } : r))
+      );
+    },
+    []
+  );
 
   /** Push one undo entry for panel edits: initial state (snapshot) when user commits (blur). */
-  const handleCommitEdit = (id: string, snapshotBeforeEdit: RectSnapshot) => {
-    setRects((prevRects) => {
-      const current = prevRects.find((r) => r.id === id);
-      if (!current || snapshotsEqual(current, snapshotBeforeEdit)) return prevRects;
-      setUndoStack((s) => [...s, snapshotBeforeEdit]);
-      setRedoStack([]);
-      return prevRects;
-    });
-  };
+  const handleCommitEdit = useCallback(
+    (id: string, snapshotBeforeEdit: RectSnapshot) => {
+      setRects((prevRects) => {
+        const current = prevRects.find((r) => r.id === id);
+        if (!current || snapshotsEqual(current, snapshotBeforeEdit))
+          return prevRects;
+        setUndoStack((s) => [...s, snapshotBeforeEdit]);
+        setRedoStack([]);
+        return prevRects;
+      });
+    },
+    []
+  );
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (undoStack.length === 0) return;
     setRects((prevRects) => {
       const entry = undoStack[undoStack.length - 1];
@@ -82,9 +98,9 @@ export function App() {
         r.id === entry.id ? { ...r, ...entry } : r
       );
     });
-  };
+  }, [undoStack]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (redoStack.length === 0) return;
     setRects((prevRects) => {
       const entry = redoStack[redoStack.length - 1];
@@ -96,7 +112,7 @@ export function App() {
         r.id === entry.id ? { ...r, ...entry } : r
       );
     });
-  };
+  }, [redoStack]);
 
   useUndoRedoShortcuts({
     focusRef: canvasContainerRef,

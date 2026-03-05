@@ -1,4 +1,5 @@
-import { useRef, useEffect } from "react";
+import { memo, useRef, useEffect } from "react";
+import { useRenderLog } from "../hooks/useRenderLog";
 import { Rect, type RectSnapshot } from "../types";
 
 /** Hex color number (e.g. 0xff6b6b) to CSS #rrggbb string */
@@ -99,7 +100,7 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-export function Panel({
+function PanelInner({
   rect,
   canUndo,
   canRedo,
@@ -109,6 +110,12 @@ export function Panel({
   onCommitEdit,
 }: Props) {
   const editStartRef = useRef<{ id: string; snapshot: RectSnapshot } | null>(null);
+
+  useRenderLog("Panel", {
+    rectId: rect?.id ?? null,
+    canUndo,
+    canRedo,
+  });
 
   useEffect(() => {
     return () => {
@@ -130,6 +137,30 @@ export function Panel({
       onCommitEdit(rect.id, editStartRef.current.snapshot);
     }
     editStartRef.current = null;
+  };
+
+  /** Snap this field to grid on blur (fluent while editing, snap when done – same as canvas drag). */
+  const snapXOnBlur = () => {
+    if (rect && snapToGrid(rect.x) !== rect.x) {
+      onUpdateRect(rect.id, { x: snapToGrid(rect.x) });
+    }
+  };
+  const snapYOnBlur = () => {
+    if (rect && snapToGrid(rect.y) !== rect.y) {
+      onUpdateRect(rect.id, { y: snapToGrid(rect.y) });
+    }
+  };
+  const snapWidthOnBlur = () => {
+    if (rect) {
+      const snapped = Math.max(GRID_SIZE, snapToGrid(rect.width));
+      if (snapped !== rect.width) onUpdateRect(rect.id, { width: snapped });
+    }
+  };
+  const snapHeightOnBlur = () => {
+    if (rect) {
+      const snapped = Math.max(GRID_SIZE, snapToGrid(rect.height));
+      if (snapped !== rect.height) onUpdateRect(rect.id, { height: snapped });
+    }
   };
 
   return (
@@ -176,10 +207,13 @@ export function Panel({
               style={inputStyle}
               value={rect.x}
               onFocus={handleFocus}
-              onBlur={handleBlur}
+              onBlur={() => {
+                handleBlur();
+                snapXOnBlur();
+              }}
               onChange={(e) => {
                 const v = Number(e.target.value);
-                if (!Number.isNaN(v)) onUpdateRect(rect.id, { x: snapToGrid(v) });
+                if (!Number.isNaN(v)) onUpdateRect(rect.id, { x: v });
               }}
             />
           </div>
@@ -193,10 +227,13 @@ export function Panel({
               style={inputStyle}
               value={rect.y}
               onFocus={handleFocus}
-              onBlur={handleBlur}
+              onBlur={() => {
+                handleBlur();
+                snapYOnBlur();
+              }}
               onChange={(e) => {
                 const v = Number(e.target.value);
-                if (!Number.isNaN(v)) onUpdateRect(rect.id, { y: snapToGrid(v) });
+                if (!Number.isNaN(v)) onUpdateRect(rect.id, { y: v });
               }}
             />
           </div>
@@ -211,11 +248,14 @@ export function Panel({
               style={inputStyle}
               value={rect.width}
               onFocus={handleFocus}
-              onBlur={handleBlur}
+              onBlur={() => {
+                handleBlur();
+                snapWidthOnBlur();
+              }}
               onChange={(e) => {
                 const v = Number(e.target.value);
                 if (!Number.isNaN(v) && v >= 1)
-                  onUpdateRect(rect.id, { width: Math.max(GRID_SIZE, snapToGrid(v)) });
+                  onUpdateRect(rect.id, { width: Math.max(GRID_SIZE, v) });
               }}
             />
           </div>
@@ -230,11 +270,14 @@ export function Panel({
               style={inputStyle}
               value={rect.height}
               onFocus={handleFocus}
-              onBlur={handleBlur}
+              onBlur={() => {
+                handleBlur();
+                snapHeightOnBlur();
+              }}
               onChange={(e) => {
                 const v = Number(e.target.value);
                 if (!Number.isNaN(v) && v >= 1)
-                  onUpdateRect(rect.id, { height: Math.max(GRID_SIZE, snapToGrid(v)) });
+                  onUpdateRect(rect.id, { height: Math.max(GRID_SIZE, v) });
               }}
             />
           </div>
@@ -259,3 +302,5 @@ export function Panel({
     </aside>
   );
 }
+
+export const Panel = memo(PanelInner);

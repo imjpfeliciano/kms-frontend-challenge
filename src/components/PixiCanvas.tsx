@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, memo, useEffect, useRef, useState } from "react";
+import { useRenderLog } from "../hooks/useRenderLog";
 import { Rect } from "../types";
 
 const GRID_SIZE = 20;
@@ -40,7 +41,7 @@ function focusCanvasContainer(
   containerRef.current?.focus();
 }
 
-export const PixiCanvas = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
+const PixiCanvasInner = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
   { rects, selectedId, onSelect, onMoveRect },
   ref,
 ) {
@@ -58,8 +59,16 @@ export const PixiCanvas = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
   const dragRef = useRef<DragState | null>(null);
   const onMoveRectRef = useRef(onMoveRect);
   const onSelectRef = useRef(onSelect);
+  const prevRectsRef = useRef<Rect[] | null>(null);
+  const prevSelectedIdRef = useRef<string | null>(null);
   onMoveRectRef.current = onMoveRect;
   onSelectRef.current = onSelect;
+
+  useRenderLog("PixiCanvas", {
+    rectsLen: rects.length,
+    selectedId,
+    pixiReady,
+  });
 
   useEffect(() => {
     const container = containerRef.current!;
@@ -96,10 +105,8 @@ export const PixiCanvas = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
         if (!drag) return;
         drag.hasMoved = true;
         const local = app.stage.toLocal(e.global);
-        const rawX = drag.rectX + (local.x - drag.startX);
-        const rawY = drag.rectY + (local.y - drag.startY);
-        const newX = snapToGrid(rawX);
-        const newY = snapToGrid(rawY);
+        const newX = drag.rectX + (local.x - drag.startX);
+        const newY = drag.rectY + (local.y - drag.startY);
         drag.lastX = newX;
         drag.lastY = newY;
         const gfx = graphicsRef.current.get(drag.id);
@@ -113,7 +120,9 @@ export const PixiCanvas = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
         if (drag) {
           if (onSelectRef.current) onSelectRef.current(drag.id);
           if (drag.hasMoved && onMoveRectRef.current) {
-            onMoveRectRef.current(drag.id, drag.lastX, drag.lastY, {
+            const snappedX = snapToGrid(drag.lastX);
+            const snappedY = snapToGrid(drag.lastY);
+            onMoveRectRef.current(drag.id, snappedX, snappedY, {
               x: drag.rectX,
               y: drag.rectY,
             });
@@ -152,6 +161,10 @@ export const PixiCanvas = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
         existing.delete(id);
       }
     }
+
+    const rectsChanged = prevRectsRef.current !== rects;
+    const selectionChanged = prevSelectedIdRef.current !== selectedId;
+    const prevSelectedId = prevSelectedIdRef.current;
 
     for (const rect of rects) {
       let gfx = existing.get(rect.id);
@@ -197,10 +210,19 @@ export const PixiCanvas = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
           };
         });
       }
-      const isDragging = dragRef.current?.id === rect.id;
-      const pos = isDragging ? { x: gfx.x, y: gfx.y } : undefined;
-      drawRect(gfx, rect, rect.id === selectedId, pos);
+      const needRedraw =
+        rectsChanged ||
+        (selectionChanged &&
+          (rect.id === selectedId || rect.id === prevSelectedId));
+      if (needRedraw) {
+        const isDragging = dragRef.current?.id === rect.id;
+        const pos = isDragging ? { x: gfx.x, y: gfx.y } : undefined;
+        drawRect(gfx, rect, rect.id === selectedId, pos);
+      }
     }
+
+    prevRectsRef.current = rects;
+    prevSelectedIdRef.current = selectedId;
   }, [rects, selectedId, onSelect, pixiReady]);
 
   return (
@@ -212,6 +234,8 @@ export const PixiCanvas = forwardRef<HTMLDivElement, Props>(function PixiCanvas(
     />
   );
 });
+
+export const PixiCanvas = memo(PixiCanvasInner);
 
 export function drawRect(
   gfx: PIXI.Graphics,

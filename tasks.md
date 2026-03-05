@@ -6,7 +6,7 @@
 [X] BONUS: Implement snap-to-grid during drag (grid size: 20px)
 [X] Avoid unnecessary re-renders when moving the rectangles
 [X] Extend the right-side panel to show controlled inputs for panel
-[ ] BONUS: If implemented snap-to-grid, position edits from the panel should also snap
+[X] BONUS: If implemented snap-to-grid, position edits from the panel should also snap
 [X] Implement Undo/redo for rectangle movement (drag or panel edits), it must support cmd/ctrl shorcuts
 
 ### Steps:
