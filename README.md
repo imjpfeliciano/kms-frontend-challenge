@@ -1,5 +1,20 @@
 For a step-by-step overview of how this challenge was tackled (tasks, order of work, and bonus items), see [tasks.md](./tasks.md).
 
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `yarn dev` | Start the development server |
+| `yarn build` | Typecheck and build for production |
+| `yarn preview` | Preview the production build |
+| `yarn test` | Run tests in watch mode |
+| `yarn test:run` | Run tests once (e.g. for CI) |
+| `yarn test:coverage` | Run tests and generate coverage report (text + HTML in `coverage/`) |
+
+## Testing
+
+The project includes **unit testing** using [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/react). Tests are run in a [jsdom](https://github.com/jsdom/jsdom) environment, and coverage is generated with **@vitest/coverage-v8**. Additional testing utilities include **@testing-library/jest-dom** (custom matchers) and **@testing-library/user-event** (user interactions). Test files live next to source as `*.test.tsx` or `*.spec.tsx`; use `yarn test` for watch mode or `yarn test:coverage` for a coverage report.
+
 ## Architecture
 
 The app is structured around a single **RectsContext** that holds all rect and undo/redo state. The root `App` wraps the tree in `RectsProvider`; `AppContent` renders the canvas and panel and wires keyboard shortcuts. **PixiCanvas** and **Panel** read from context via `useRects()` and no longer receive rect/undo props (no prop drilling).
